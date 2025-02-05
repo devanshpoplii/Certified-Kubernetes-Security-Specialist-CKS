@@ -127,3 +127,78 @@ To find the PID of a process:
 ps aux | grep process_name
 ```
 To detach from the process, press `Ctrl + C` or `Ctrl + \`.
+
+## **What is AquaSec Tracee?**
+[AquaSec Tracee](https://github.com/aquasecurity/tracee) is an open-source runtime security and forensic tool that uses **eBPF (Extended Berkeley Packet Filter)** to trace system events in real time. It is designed to detect security threats, malicious behaviors, and suspicious activity in Linux environments. 
+
+### **Why Use Tracee?** 
+- Detects suspicious and malicious activities like privilege escalation, container escapes, or malware execution. 
+- Uses **eBPF**, which is highly efficient and does not require modifying the kernel or inserting modules. 
+- Provides detailed insights into **syscalls, process behavior, and security events**. 
+
+## **Installing and Running Tracee** 
+### **Installation Options** 
+#### **Option 1: Running Tracee via Docker** 
+```bash
+docker run --rm --privileged \
+  -v /etc/os-release:/etc/os-release-host:ro \
+  -v /lib/modules:/lib/modules:ro \
+  -v /usr/src:/usr/src:ro \
+  -v /tmp/tracee:/tmp/tracee
+  aquasec/tracee:latest --trace comm=ls
+```
+This command:
+- Runs Tracee in a privileged container. 
+- Mounts necessary host directories to access kernel data. 
+
+#### *Option 2: Running Tracee from Source
+```bash
+git clone https://github.com/aquasecurity/tracee.git
+cd tracee
+make
+sudo ./dist/tracee --output format:table
+```
+
+## **4. Understanding Tracee Output** 
+Tracee outputs event logs in various formats (`table`, `json`, `table-verbose`, etc.).
+Example output:
+```
+TIME       UID    COMM         PID     TID     SYSCALL             ARGS
+10:30:12   1001   curl         1234    1234    connect             fd=3 addr=93.184.216.34
+10:30:15   1001   chmod        5678    5678    chmod               filename="/etc/passwd" mode=0600
+```
+`connect` syscall indicates a network connection attempt. 
+`chmod` on `/etc/passwd` could be a suspicious modification. 
+
+---
+## **5. Filtering and Customizing Tracee Events** 
+### *Trace Only Specific Events
+To monitor specific syscalls:
+```bash
+sudo ./tracee --events execve,openat,connect
+
+or
+
+docker run --rm --privileged \
+  -v /etc/os-release:/etc/os-release-host:ro \
+  -v /lib/modules:/lib/modules:ro \
+  -v /usr/src:/usr/src:ro \
+  -v /tmp/tracee:/tmp/tracee
+  aquasec/tracee:latest --events execve,openat,connect
+```
+Example output:
+```
+TIME       UID    COMM     PID    TID    EVENT      ARGS
+10:30:12   1001   bash     4321   4321   execve     filename="/bin/ls"
+10:30:15   1001   curl     5678   5678   connect    addr=8.8.8.8
+```
+### *Trace Events from a Specific Process
+To trace only a given process (e.g., `nginx`):
+```bash
+sudo ./tracee --filter pid=1234
+```
+### *Filter by UID (User ID)
+```bash
+sudo ./tracee --filter uid=1000
+```
+---
